@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class MainScript : MonoBehaviour {
 	BFSalgo bAlgo;
@@ -12,6 +13,7 @@ public class MainScript : MonoBehaviour {
 
 	public GameObject cellPrefab;
 	public GameObject ballPrefab;
+	public GameObject pathPrefab;
 
 	private Color[,] board;
 	private GameObject[] balls;
@@ -61,34 +63,18 @@ public class MainScript : MonoBehaviour {
 			{
 				RaycastHit hitInfo = new RaycastHit();
 				bool hit = Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hitInfo);
-				if (hit) 
-				{
+				if (hit) {
 					GameObject selectedGO = hitInfo.transform.gameObject;
 			
-					if (selectedGO.tag == "Ball")
-					{
+					if (selectedGO.tag == "Ball") {
 						ballSelected = true;
 						clickedCoord = selectedGO.GetComponent<Transform> ().position;
-						int clickedRow = (int) clickedCoord.x;
-						int clickedCol = (int) clickedCoord.z;
-		
-						Debug.Log ("Ball at row: " + clickedRow + " col: " + clickedCol + " is clicked: " + (clickedRow * NUM + clickedCol));
 
 					} else if (ballSelected && selectedGO.tag == "Cell") {
-						int clickedRow = (int) clickedCoord.z;
-						int clickedCol = (int) clickedCoord.x;
-
 						Vector3 moveTo = selectedGO.GetComponent<Transform> ().position;
-						int moveToRow = (int) moveTo.x;
-						int moveToCol = (int) moveTo.z;
-
-						Debug.Log ("Wanna move the ball at row: " + clickedRow + " col: " + clickedCol + " to cell row: " + moveToRow + " col: " + moveToCol);
 						moveBall (clickedCoord, moveTo);
-
 						ballSelected = false;
 					}
-				} else {
-					Debug.Log("No hit");
 				}
 			} 
 
@@ -124,7 +110,6 @@ public class MainScript : MonoBehaviour {
 			board [row, col] = color;
 			balls [row * NUM + col] = (GameObject)Instantiate (ballPrefab, new Vector3 (row * cellWidth, ballSize / 2.0f, col * cellWidth), Quaternion.identity);
 			balls [row * NUM + col].GetComponent<MeshRenderer> ().material.SetColor ("_Color", color);
-			Debug.Log ("putBall at: " + (row * NUM + col));
 			return true;
 		}
 		return false;
@@ -139,6 +124,17 @@ public class MainScript : MonoBehaviour {
 
 		if (board [destRow, destCol] == Color.black
 			&& bAlgo.checkAndPutBall(sourceRow, sourceCol, destRow, destCol)) {
+
+			List<int> path = bAlgo.getPath ();
+			GameObject[] pathDots = new GameObject[path.Count];
+
+			for(int i = 0; i < path.Count; i++) {
+				int row = path [i] / NUM;
+				int col = path [i] % NUM;
+
+				pathDots [i] = (GameObject)Instantiate (pathPrefab, new Vector3 (row * cellWidth, 0.1f, col * cellWidth), Quaternion.identity);
+				Object.Destroy(pathDots [i], 2.0f);
+			}
 
 			board [destRow, destCol] = board [sourceRow, sourceCol];
 			board [sourceRow, sourceCol] = Color.black;
