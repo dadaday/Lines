@@ -6,9 +6,9 @@ using System.Collections.Generic;
 public class MainScript : MonoBehaviour {
 	BFSalgo bAlgo;
 
-	public static int NUM = 9;
-	public static int BPSTEP = 3;
-	public static int COMBO = 5;
+	public int NUM = 9;
+	public int BPSTEP = 3;
+	public int COMBO = 5;
 
 	private const int COLORSNUMBER = 7;
 	private int BOARDDIM;
