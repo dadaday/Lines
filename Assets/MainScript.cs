@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -7,6 +8,7 @@ public class MainScript : MonoBehaviour {
 
 	public static int NUM = 9;
 	public static int BPSTEP = 3;
+	public static int COMBO = 5;
 
 	private const int COLORSNUMBER = 7;
 	private int BOARDDIM;
@@ -14,46 +16,38 @@ public class MainScript : MonoBehaviour {
 	public GameObject cellPrefab;
 	public GameObject ballPrefab;
 	public GameObject pathPrefab;
+	
+	public Text countText;
+	public Text scoreText;
 
 	private Color[,] board;
 	private GameObject[] balls;
 
 	private float cellWidth = 1.0f;
 	private float ballSize = 0.8f;
+
 	private Color DARKRED;
 	private Color[] ballColors;
 
 	private bool finished;
 	private int ballsOnTable;
+	private int score;
 
 	private Vector3 clickedCoord;
 	private bool ballSelected;
 
 	// Use this for initialization
 	void Start () {
+		DARKRED = new Color (150 / 255.0f, 17 / 255.0f, 17 / 255.0f);
+		ballColors = new Color[COLORSNUMBER] {Color.red, Color.green, Color.blue, Color.yellow, Color.cyan, Color.magenta, DARKRED};
 		BOARDDIM = NUM * NUM;
-		bAlgo = new BFSalgo(NUM);
 
 		board = new Color[NUM, NUM];
 		balls = new GameObject[BOARDDIM];
 
-		DARKRED = new Color (150 / 255.0f, 17 / 255.0f, 17 / 255.0f);
-		ballColors = new Color[COLORSNUMBER] {Color.red, Color.green, Color.blue, Color.yellow, Color.cyan, Color.magenta, DARKRED};
+		Reset ();
 
-		finished = false;
-		ballsOnTable = 0;
-		clickedCoord = new Vector3 (-1, -1, -1);
-		ballSelected = false;
-
-		drawTable (NUM);	
-
-		for (int i = 0; i < NUM; i++) {
-			for (int j = 0; j < NUM; j++) {
-				board [i,j] = Color.black;
-			}
-		}
-
-		generateBalls (BPSTEP);
+		drawTable (NUM);
 	}
 	
 	// Update is called once per frame
@@ -94,6 +88,7 @@ public class MainScript : MonoBehaviour {
 			if (putBall(row, col, ballColors[color])) {
 				added++;
 				ballsOnTable++;
+				countText.text = ballsOnTable.ToString ();
 				if (ballsOnTable >= BOARDDIM) {
 					Debug.Log ("MAX");
 					finished = true;
@@ -141,6 +136,8 @@ public class MainScript : MonoBehaviour {
 
 			balls [destRow * NUM + destCol] = balls [sourceRow * NUM + sourceCol];
 			balls[destRow * NUM + destCol].GetComponent<Transform> ().position = new Vector3(dest.x, source.y, dest.z);
+
+			countSimilar (destRow, destCol, board[destRow, destCol]);
 		} else {
 			Debug.Log ("CANT PUT AT ROW: " + destRow + " COL: " + destCol);
 		}
@@ -165,7 +162,192 @@ public class MainScript : MonoBehaviour {
 		}
 	}
 
+	private void countSimilar(int row, int col, Color color) {
+		int byRow = 0;
+		int byCol = 0;
+		int dia1 = 0;
+		int dia2 = 0;
+		bool vanishedBalls = false;
+
+		int rLow = row;
+		for (; rLow >= 0; rLow--) {
+			if (board [rLow, col] == color) {
+				byRow++;
+			} else {
+				break;
+			}
+		}
+		rLow++;
+
+		int rHi = row + 1;
+		for (; rHi < NUM; rHi++) {
+			if (board [rHi, col] == color) {
+				byRow++;
+			} else {
+				break;
+			}
+		}
+		rHi--;
+
+		if (byRow >= COMBO) {
+			Debug.Log ("Removing " + byRow + " rows: " + rLow + "-" + rHi + " on column " + col);
+			score += byRow;
+			removeBallsStraight (rLow, rHi, true, col);
+			vanishedBalls = true;
+		}
+
+		int cLow = col;
+		for (; cLow >= 0; cLow--) {
+			if (board [row, cLow] == color) {
+				byCol++;
+			} else {
+				break;
+			}
+		}
+		cLow++;
+
+		int cHi = col + 1;
+		for (; cHi < NUM; cHi++) {
+			if (board [row, cHi] == color) {
+				byCol++;
+			} else {
+				break;
+			}
+		}
+		cHi--;
+
+		if (byCol >= COMBO) {
+			Debug.Log ("Removing "  + byCol + " Cols: " + cLow + "-" + cHi + " on row " + row);
+			score += byCol;
+			removeBallsStraight (cLow, cHi, false, row);
+			vanishedBalls = true;
+		}
+
+		int rL = row;
+		int cL = col;
+		for (; rL >= 0 && cL >= 0; rL--, cL--) {
+			if (board [rL, cL] == color) {
+				dia1++;
+			} else {
+				break;
+			}
+		}
+		rL++; cL++;
+
+		int rH = row + 1;
+		int cH = col + 1;
+		for (; rH < NUM && cH < NUM; rH++, cH++) {
+			if (board [rH, cH] == color) {
+				dia1++;
+			} else {
+				break;
+			}
+		}
+		rH--; cH--;
+
+		if (dia1 >= COMBO) {
+			Debug.Log ("Removing "  + dia1 + " row: " + rL + " col: " + cL + "-" + rH + " " + cH);
+			score += dia1;
+			removeBallDiagonal (rL, cL, rH, cH, true);
+			vanishedBalls = true;
+		}
+
+		int srH = row;
+		int scL = col;
+
+		for (; srH < NUM && scL >= 0; srH++, scL--) {
+			if (board [srH, scL] == color) {
+				dia2++;
+			} else {
+				break;
+			}
+		}
+		srH--; scL++;
+
+		int srL = row - 1;
+		int scH = col + 1;
+		for (; srL >= 0 && scH < NUM; srL--, scH++) {
+			if (board [srL, scH] == color) {
+				dia2++;
+			} else {
+				break;
+			}
+		}
+		srL++; scH--; 
+
+
+		if (dia2 >= COMBO) {
+			Debug.Log ("Removing "  + dia2 + " row: " + srL + " col: " + scH + "-" + srH + " " + scL);
+			score += dia2;
+			removeBallDiagonal (srL, scH, srH, scL, false);
+			vanishedBalls = true;
+		}
+
+		scoreText.text = score.ToString ();
+		if (!vanishedBalls) {
+			generateBalls (BPSTEP);
+		}
+	}
+
+	public void removeBallsStraight(int start, int end, bool isRow, int removeAlong) {
+		for (int i = start; i <= end; i++) {
+			if (isRow) {
+				Destroy (balls [i * NUM + removeAlong]);
+				board [i, removeAlong] = Color.black;
+				bAlgo.addTies (i, removeAlong);
+			} else {
+				Destroy (balls [removeAlong * NUM + i]);
+				board [removeAlong, i] = Color.black;
+				bAlgo.addTies (removeAlong, i);
+			}
+			ballsOnTable--;
+			countText.text = ballsOnTable.ToString ();
+		}				
+	}
+
+	private void removeBallDiagonal(int startRow, int startCol, int endRow, int endCol, bool posSlope) {
+		if (posSlope) {
+			for (; startRow <= endRow && startCol <= endCol; startRow++, startCol++) {
+				Destroy (balls [startRow * NUM + startCol]);
+				board [startRow, startCol] = Color.black;
+				bAlgo.addTies (startRow, startCol);
+
+				ballsOnTable--;
+				countText.text = ballsOnTable.ToString ();
+			}	
+		} else {
+			Debug.Log (startRow + "-" + endRow + "|" + startCol + "-" + endCol);
+			for (; startRow <= endRow && startCol >= endCol; startRow++, startCol--) {
+				Destroy (balls [startRow * NUM + startCol]);
+				board [startRow, startCol] = Color.black;
+				bAlgo.addTies (startRow, startCol);
+
+				ballsOnTable--;
+				countText.text = ballsOnTable.ToString ();
+			}
+		}
+	}
+
 	public void ExitApplication() {
 		Application.Quit ();
+	}
+
+	public void Reset() {
+		bAlgo = new BFSalgo(NUM);
+		
+		finished = false;
+		ballsOnTable = 0;
+		score = 0;
+		ballSelected = false;
+
+		scoreText.text = score.ToString ();
+
+		for (int i = 0; i < NUM; i++) {
+			for (int j = 0; j < NUM; j++) {
+				board [i,j] = Color.black;
+				Destroy (balls [i * NUM + j]);
+			}
+		}
+		generateBalls (BPSTEP);
 	}
 }
