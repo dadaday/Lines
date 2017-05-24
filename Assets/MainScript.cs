@@ -19,6 +19,7 @@ public class MainScript : MonoBehaviour {
 	
 	public Text countText;
 	public Text scoreText;
+	public Image endImage;
 
 	private Color[,] board;
 	private GameObject[] balls;
@@ -92,6 +93,7 @@ public class MainScript : MonoBehaviour {
 				if (ballsOnTable >= BOARDDIM) {
 					Debug.Log ("MAX");
 					finished = true;
+					endImage.gameObject.SetActive (true);
 				}
 			}
 		}
@@ -333,6 +335,7 @@ public class MainScript : MonoBehaviour {
 	}
 
 	public void Reset() {
+		endImage.gameObject.SetActive (false);
 		bAlgo = new BFSalgo(NUM);
 		
 		finished = false;
